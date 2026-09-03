@@ -65,6 +65,87 @@
 
 > **Q2** ถ้าเจอบั๊กแบบนี้ในระบบจริง ทำไมการ "ใส่ `System.out.println` ไล่ดู" ถึงมักทำให้บั๊กหายไปเฉย ๆ
 
+ * ตาราง20รอบ รอบแรก
+ 
+=== Demo 1: Lost Update (deposit) ===
+4 threads, each depositing 1 unit 50000 times
+The correct total is 200000 in every round
+
+ round  |   actual total  | expected |   lost
+--------+-----------------+----------+---------
+   1    |        63,504   |  200,000  |  136,496   <-- WRONG
+   2    |       111,370   |  200,000  |  88,630   <-- WRONG
+   3    |       200,000   |  200,000  |       0
+   4    |       200,000   |  200,000  |       0
+   5    |       200,000   |  200,000  |       0
+   6    |       200,000   |  200,000  |       0
+   7    |       200,000   |  200,000  |       0
+   8    |       200,000   |  200,000  |       0
+   9    |       200,000   |  200,000  |       0
+  10    |       200,000   |  200,000  |       0
+  11    |       200,000   |  200,000  |       0
+  12    |       200,000   |  200,000  |       0
+  13    |       200,000   |  200,000  |       0
+  14    |       200,000   |  200,000  |       0
+  15    |       200,000   |  200,000  |       0
+  16    |       200,000   |  200,000  |       0
+  17    |       200,000   |  200,000  |       0
+  18    |       200,000   |  200,000  |       0
+  19    |       200,000   |  200,000  |       0
+  20    |       200,000   |  200,000  |       0
+
+=== Experiment summary ===
+Rounds with a wrong total : 2 / 20
+Largest amount lost       : 136496
+
+Same program, same code, different answer each round.
+That is a race condition. Continue in README.md
+
+[Done] exited with code=0 in 1.438 seconds
+
+ * ตาราง20รอบ รอบสอง
+
+=== Demo 1: Lost Update (deposit) ===
+4 threads, each depositing 1 unit 50000 times
+The correct total is 200000 in every round
+
+ round  |   actual total  | expected |   lost
+--------+-----------------+----------+---------
+   1    |        54,324   |  200,000  |  145,676   <-- WRONG
+   2    |        65,318   |  200,000  |  134,682   <-- WRONG
+   3    |        76,889   |  200,000  |  123,111   <-- WRONG
+   4    |       101,011   |  200,000  |  98,989   <-- WRONG
+   5    |       200,000   |  200,000  |       0
+   6    |       200,000   |  200,000  |       0
+   7    |       200,000   |  200,000  |       0
+   8    |       200,000   |  200,000  |       0
+   9    |       200,000   |  200,000  |       0
+  10    |       200,000   |  200,000  |       0
+  11    |       200,000   |  200,000  |       0
+  12    |       200,000   |  200,000  |       0
+  13    |       200,000   |  200,000  |       0
+  14    |       200,000   |  200,000  |       0
+  15    |       200,000   |  200,000  |       0
+  16    |       200,000   |  200,000  |       0
+  17    |       200,000   |  200,000  |       0
+  18    |       200,000   |  200,000  |       0
+  19    |       200,000   |  200,000  |       0
+  20    |       200,000   |  200,000  |       0
+
+=== Experiment summary ===
+Rounds with a wrong total : 4 / 20
+Largest amount lost       : 145676
+
+Same program, same code, different answer each round.
+That is a race condition. Continue in README.md
+
+[Done] exited with code=0 in 0.845 seconds
+
+ * มีกี่รอบที่ผิด และหายมากที่สุดกี่บาท
+
+รอบแรก 2 รอบ เสียหายไป 136496
+รอบสอง 4 รอบ เสียหายไป 145676
+
 ---
 
 ## ส่วนที่ 2 · ชี้ให้ได้ก่อนแก้ 
@@ -85,10 +166,10 @@
 
 | เมธอด | critical section เริ่ม–จบบรรทัดที่ | เหตุผล |
 |---|---|---|
-| `deposit` | | |
-| `withdraw` | | |
-| `balance` | | |
-| `id` | | |
+| `deposit` | balance = balance + amount; | เป็นการอ่าน–แก้ไข–เขียน balance ถ้าหลายเธรดทำพร้อมกันอาจเกิด Lost Update |
+| `withdraw` | if (balance >= amount) ถึง return true; | ต้องล็อกทั้งการตรวจสอบยอดและการหักเงิน เพื่อให้ Check-Then-Act เป็นการกระทำเดียว |
+| `balance` | return balance; | ต้องคุ้มครองการอ่านเพื่อให้เห็นค่าที่เขียนอย่างถูกต้องตามการออกแบบ |
+| `id` | ไม่มี Critical Section | id เป็น final และไม่เปลี่ยนค่าหลังสร้าง object |
 
 > **จุดที่คนพลาดมากที่สุด** `id()` กับ `balance()` ต่างก็เป็นการอ่านอย่างเดียวทั้งคู่
 > แต่ควรได้คำตอบไม่เหมือนกัน อธิบายให้ได้ว่าเพราะอะไร
@@ -112,11 +193,146 @@
 
 บันทึกตารางใหม่ของทั้งสองเดโมลงรายงาน คู่กับตารางก่อนแก้
 
+* รัน RaceDemo ก่อน
+=== Demo 1: Lost Update (deposit) ===
+4 threads, each depositing 1 unit 50000 times
+The correct total is 200000 in every round
+
+ round  |   actual total  | expected |   lost
+--------+-----------------+----------+---------
+   1    |        63,504   |  200,000  |  136,496   <-- WRONG
+   2    |       111,370   |  200,000  |  88,630   <-- WRONG
+   3    |       200,000   |  200,000  |       0
+   4    |       200,000   |  200,000  |       0
+   5    |       200,000   |  200,000  |       0
+   6    |       200,000   |  200,000  |       0
+   7    |       200,000   |  200,000  |       0
+   8    |       200,000   |  200,000  |       0
+   9    |       200,000   |  200,000  |       0
+  10    |       200,000   |  200,000  |       0
+  11    |       200,000   |  200,000  |       0
+  12    |       200,000   |  200,000  |       0
+  13    |       200,000   |  200,000  |       0
+  14    |       200,000   |  200,000  |       0
+  15    |       200,000   |  200,000  |       0
+  16    |       200,000   |  200,000  |       0
+  17    |       200,000   |  200,000  |       0
+  18    |       200,000   |  200,000  |       0
+  19    |       200,000   |  200,000  |       0
+  20    |       200,000   |  200,000  |       0
+
+=== Experiment summary ===
+Rounds with a wrong total : 2 / 20
+Largest amount lost       : 136496
+
+
+* รัน RaceDemo แก้แล้ว
+=== Demo 1: Lost Update (deposit) ===
+4 threads, each depositing 1 unit 50000 times
+The correct total is 200000 in every round
+
+ round  |   actual total  | expected |   lost
+--------+-----------------+----------+---------
+   1    |       200,000   |  200,000  |       0
+   2    |       200,000   |  200,000  |       0
+   3    |       200,000   |  200,000  |       0
+   4    |       200,000   |  200,000  |       0
+   5    |       200,000   |  200,000  |       0
+   6    |       200,000   |  200,000  |       0
+   7    |       200,000   |  200,000  |       0
+   8    |       200,000   |  200,000  |       0
+   9    |       200,000   |  200,000  |       0
+  10    |       200,000   |  200,000  |       0
+  11    |       200,000   |  200,000  |       0
+  12    |       200,000   |  200,000  |       0
+  13    |       200,000   |  200,000  |       0
+  14    |       200,000   |  200,000  |       0
+  15    |       200,000   |  200,000  |       0
+  16    |       200,000   |  200,000  |       0
+  17    |       200,000   |  200,000  |       0
+  18    |       200,000   |  200,000  |       0
+  19    |       200,000   |  200,000  |       0
+  20    |       200,000   |  200,000  |       0
+
+=== Experiment summary ===
+Rounds with a wrong total : 0 / 20
+Largest amount lost       : 0
+
+* รัน OverdraftDemo ก่อน
+=== Demo 2: Overdraft (withdraw) ===
+Starting balance : 100000
+Withdraw attempts: 200000  (4 threads x 50000, 1 unit each)
+Correct result   : exactly 100000 succeed, final balance 0
+
+ round  |  succeeded  |  should be  |  final balance
+--------+-------------+-------------+----------------
+   1    |    200,000  |    100,000  |      44,281   <-- WRONG
+   2    |    200,000  |    100,000  |      41,881   <-- WRONG
+   3    |    104,044  |    100,000  |           0   <-- WRONG
+   4    |    103,090  |    100,000  |           0   <-- WRONG
+   5    |    150,741  |    100,000  |           0   <-- WRONG
+   6    |    200,000  |    100,000  |      32,287   <-- WRONG
+   7    |    193,477  |    100,000  |           0   <-- WRONG
+   8    |    185,865  |    100,000  |           0   <-- WRONG
+   9    |    189,444  |    100,000  |           0   <-- WRONG
+  10    |    195,841  |    100,000  |           0   <-- WRONG
+  11    |    186,603  |    100,000  |           0   <-- WRONG
+  12    |    189,830  |    100,000  |           0   <-- WRONG
+  13    |    166,986  |    100,000  |           0   <-- WRONG
+  14    |    200,000  |    100,000  |       4,235   <-- WRONG
+  15    |    178,033  |    100,000  |           0   <-- WRONG
+  16    |    165,786  |    100,000  |           0   <-- WRONG
+  17    |    200,000  |    100,000  |       1,038   <-- WRONG
+  18    |    133,434  |    100,000  |           0   <-- WRONG
+  19    |    139,286  |    100,000  |           0   <-- WRONG
+  20    |    186,556  |    100,000  |           0   <-- WRONG
+
+=== Experiment summary ===
+Rounds with a wrong result : 20 / 20
+Most withdrawals approved  : 200000   (only 100000 were funded)
+Lowest balance ever seen   : 0
+
+* รัน OverdraftDemo แก้แล้ว
+=== Demo 2: Overdraft (withdraw) ===
+Starting balance : 100000
+Withdraw attempts: 200000  (4 threads x 50000, 1 unit each)
+Correct result   : exactly 100000 succeed, final balance 0
+
+ round  |  succeeded  |  should be  |  final balance
+--------+-------------+-------------+----------------
+   1    |    100,000  |    100,000  |           0
+   2    |    100,000  |    100,000  |           0
+   3    |    100,000  |    100,000  |           0
+   4    |    100,000  |    100,000  |           0
+   5    |    100,000  |    100,000  |           0
+   6    |    100,000  |    100,000  |           0
+   7    |    100,000  |    100,000  |           0
+   8    |    100,000  |    100,000  |           0
+   9    |    100,000  |    100,000  |           0
+  10    |    100,000  |    100,000  |           0
+  11    |    100,000  |    100,000  |           0
+  12    |    100,000  |    100,000  |           0
+  13    |    100,000  |    100,000  |           0
+  14    |    100,000  |    100,000  |           0
+  15    |    100,000  |    100,000  |           0
+  16    |    100,000  |    100,000  |           0
+  17    |    100,000  |    100,000  |           0
+  18    |    100,000  |    100,000  |           0
+  19    |    100,000  |    100,000  |           0
+  20    |    100,000  |    100,000  |           0
+
+=== Experiment summary ===
+Rounds with a wrong result : 0 / 20
+Most withdrawals approved  : 100000   (only 100000 were funded)
+Lowest balance ever seen   : 0
+
 ### คำถามที่ต้องตอบ
 
 > **Q3** `withdraw` อันตรายกว่า `deposit` อย่างไร ทั้งที่ทั้งคู่ก็แค่บวกลบเลขตัวเดียว
+เพราะ deposit ที่ไม่ล็อกอาจทำให้เงินหายจาก Lost Update ซึ่งต่างจาก withdraw ที่มีปัญหาเพิ่มขึ้นคือ Check-Then-Act ที่จะต้องตรวจสอบยอดก่อนแล้วจึงหักเงิน
 
 > **Q4** ถ้าใส่ `synchronized` ให้ `deposit` กับ `withdraw` แต่**ไม่ใส่ให้ `balance()`** จะเกิดอะไรขึ้น และทำไมเทสต์อาจจับไม่ได้
+ถ้า deposit และ withdraw ล็อกแล้ว แต่ balance ไม่ล็อก การอ่านยอดเงินจะไม่ได้การคุ้มครองเดียว ทำให้การมองเห็นค่าระหว่างเธรดไม่สอดคล้องกัน เพราะเทสต์อาจอ่านยอดหลังจากเธรดทั้งหมดทำงานเสร็จแล้ว
 
 ---
 
@@ -141,8 +357,52 @@
 ### สิ่งที่ต้องทำ
 
 1. บันทึกผลเฟส A ตอนที่ยังค้าง ลงรายงาน
+
+=== Demo 3: Transfer between two accounts ===
+Thread-1 transfers A -> B, 200000 times
+Thread-2 transfers B -> A, 200000 times
+
+--- Phase A: does it hang? ---
+Waiting at most 8 seconds
+Elapsed: 55 ms
+Result : STUCK (DEADLOCK)
+The JVM confirms 2 deadlocked thread(s):
+   
+mover-A-to-B
+mover-B-to-A
+
+Thread-1 holds A and waits for B.
+Thread-2 holds B and waits for A.
+Neither will ever let go.
+
+Note there is no error, no exception, nothing in red.
+The program simply stopped.
+
+Fix TODO 2 in Bank.java and run this file again.
+(Phase B is skipped while the program still hangs.)
+
 2. อ่าน `TODO 2` ใน `Bank.java` แล้วแก้
 3. รันใหม่ ต้องผ่านทั้งเฟส A และเฟส B
+
+=== Demo 3: Transfer between two accounts ===
+Thread-1 transfers A -> B, 200000 times
+Thread-2 transfers B -> A, 200000 times
+
+--- Phase A: does it hang? ---
+Waiting at most 8 seconds
+Elapsed: 51 ms
+Result : completed, no hang
+
+--- Phase B: is the transfer still atomic? ---
+An auditor thread reads the combined total while money moves.
+Final total  : 2000000   (should be 2000000)
+Audit samples: 7561 taken, 0 did not balance
+
+The books balanced in every single sample taken while
+money was moving.
+
+Both goals are met: a consistent lock order removed the
+deadlock, and holding both locks kept the transfer atomic.
 
 > **ทางลัดที่ห้ามใช้** อย่าแก้ deadlock ด้วยการถอด `synchronized` ใบในออก
 >
@@ -156,11 +416,14 @@
 ### คำถามที่ต้องตอบ
 
 > **Q5** อธิบายว่าทำไมการเรียงลำดับล็อกตาม `id` ถึงทำให้ deadlock เกิดไม่ได้เลย ไม่ใช่แค่เกิดยากขึ้น
+เพราะทุกเธรดจะต้องล็อกบัญชีตามลำดับเดียวกันเสมอ
 
 > **Q6** ถ้าเปลี่ยนไปใช้ล็อกใบเดียวคุมทั้งธนาคาร (`synchronized (Bank.class)`) จะแก้ deadlock ได้ไหม และต้องแลกกับอะไร
+แก้ได้ เพราะทุกการโอนต้องรอล็อกเดียวกันก่อนเข้าไปทำงาน แต่ต้องแลกกับ ประสิทธิภาพกับความสามารถในการทำงานพร้อมกัน
 
 > **Q7** สมมติมีคนแก้ deadlock ด้วยการถอดล็อกใบในออก แล้ววัดยอดรวมหลังงานจบก็ได้ 2,000,000 พอดีทุกครั้ง
 > เขาสรุปว่าโค้ดถูกต้องแล้ว เขาผิดตรงไหน และต้องวัดอย่างไรถึงจะเห็นปัญหา
+ผิดเพราะตรวจเฉพาะ ผลลัพธ์สุดท้าย แต่ไม่ได้ตรวจสิ่งที่เกิดขึ้น ระหว่างการโอน ซึ่งจะต้องมีเธรดในการตรวจสอบอ่านยอดรวมขณะที่การโอนกำลังทำงานอยู่
 
 ---
 
@@ -169,6 +432,18 @@
 ```bash
 รัน ActorDemo
 ```
+=== Demo 4: The version with no locks at all ===
+Exactly the same workload as RaceDemo.
+But Account is replaced by an actor that solely owns balance.
+
+Actual total : 200000
+Expected     : 200000
+Elapsed      : 64 ms
+
+Correct, without a single synchronized keyword.
+
+Closing question: what does this approach trade away,
+compared with simply adding locks?
 
 ไฟล์นี้ทำงานเดียวกับ `RaceDemo` ทุกประการ แต่**ไม่มีคำว่า `synchronized` อยู่เลยสักตัว**
 และให้ผลถูกต้องทุกครั้ง เพราะ `balance` ไม่ได้ถูกแชร์ มันมีเจ้าของอยู่เธรดเดียว
@@ -178,6 +453,7 @@
 
 > **Q8** วิธีนี้กำจัด race condition ได้โดยไม่ต้องล็อกเลย แล้วทำไมเราไม่ใช้วิธีนี้กับทุกอย่างในโลก
 > ยกข้อเสียมาอย่างน้อยสองข้อ
+เพราะ Actor model มีข้อแลกเปลี่ยนเมื่อเทียบกับการใช้ synchronized โดยมีข้อเสียเช่น อาจเกิดการรันข้อมูลที่ล่าช้า หรือ การเข้าถึงข้อมูลโดยตรงได้ยาก
 
 
 
